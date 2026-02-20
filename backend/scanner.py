@@ -352,25 +352,18 @@ def apply_ama_pro_tema(df, **kwargs):
         
         signal = None
         crossover_angle = None
-        signal_idx = None
+        signal_idx = -2  # STRICTLY check the immediate previous completed candle
         
-        # Check the last 2 COMPLETED candles (skipping index -1 which is live/forming)
-        # This ensures we don't miss a signal that just happened one bar ago.
-        for check_idx in [-2, -3]:
-            if abs(check_idx) < len(df):
-                if df['longValid'].iloc[check_idx]:
-                    signal = "LONG"
-                    signal_idx = check_idx
-                    logging.info(f"  >>> LONG VALID found at closed candle[{check_idx}]")
-                    break
-                elif df['shortValid'].iloc[check_idx]:
-                    signal = "SHORT"
-                    signal_idx = check_idx
-                    logging.info(f"  >>> SHORT VALID found at closed candle[{check_idx}]")
-                    break
+        if abs(signal_idx) < len(df):
+            if df['longValid'].iloc[signal_idx]:
+                signal = "LONG"
+                logging.info(f"  >>> LONG VALID found at immediate previous candle[{signal_idx}]")
+            elif df['shortValid'].iloc[signal_idx]:
+                signal = "SHORT"
+                logging.info(f"  >>> SHORT VALID found at immediate previous candle[{signal_idx}]")
         
         if signal is None:
-            logging.info("  No valid signal on recently closed candles (indices -2, -3).")
+            logging.info(f"  No valid signal on immediate previous candle (index {signal_idx}).")
             return None, None
         
         # Calculate crossover angle
