@@ -86,32 +86,22 @@ def fetch_yfinance_data(ticker, tf_input, retries=3):
     Fetches data using yfinance with retry logic.
     Maps timeframes to yfinance intervals, resamples when needed.
     """
-    tf_str = tf_input.replace('min', 'm').replace('hr', 'h').replace(' day', 'd').replace(' week', 'wk').replace(' ', '')
+    # Clean up input string
+    tf_clean = tf_input.lower().strip()
     
-    yf_interval = '15m'
-    period = '60d'
-    resample_freq = None
+    # Explicit mapping for reliability
+    mapping = {
+        '15min': ('15m', '60d', None),
+        '30min': ('30m', '60d', None),
+        '45min': ('15m', '60d', '45min'),
+        '1hr': ('1h', '730d', None),
+        '2hr': ('1h', '730d', '2hr'),
+        '4hr': ('1h', '730d', '4hr'),
+        '1 day': ('1d', '5y', None),
+        '1 week': ('1wk', 'max', None)
+    }
     
-    if tf_str in ['15m', '30m']:
-        yf_interval = tf_str
-        period = '60d'
-    elif tf_str == '45m':
-        yf_interval = '15m'
-        period = '60d'
-        resample_freq = '45min'
-    elif tf_str == '1h':
-        yf_interval = '1h'
-        period = '730d'
-    elif tf_str in ['2h', '4h']:
-        yf_interval = '1h'
-        period = '730d'
-        resample_freq = tf_str
-    elif tf_str == '1d':
-        yf_interval = '1d'
-        period = '5y'
-    elif tf_str == '1wk':
-        yf_interval = '1wk'
-        period = 'max'
+    yf_interval, period, resample_freq = mapping.get(tf_clean, ('15m', '60d', None))
 
     for attempt in range(1, retries + 1):
         try:
@@ -158,14 +148,14 @@ def fetch_yfinance_data(ticker, tf_input, retries=3):
 # AMA PRO TEMA LOGIC — Faithful Port of Pine Script
 # =============================================================================
 
-def apply_ama_pro_tema(df, **kwargs):
+def apply_ama_pro_tema(df, tf_input="1 day", **kwargs):
     """
     Applies the full AMA PRO TEMA logic:
     1. Market regime detection (ADX, volatility ratio, EMA alignment)
-    2. Adaptive TEMA period calculation
+    2. Adaptive TEMA period calculation (with tfMultiplier)
     3. TEMA crossover signals
     4. Signal filtering: longValid / shortValid (min bars between + regime conflict)
-    5. Check the PREVIOUS closed candle for a valid signal
+    5. Check the PREVIOUS closed candle (index -2) for a valid signal
     
     Returns: (signal, crossover_angle) or (None, None)
     """
@@ -238,8 +228,22 @@ def apply_ama_pro_tema(df, **kwargs):
             [0.7, 1.3], default=1.0
         )
         trend_adjust = np.where(df['regimeIsTrending'], 0.8, 1.2)
-        tf_multiplier = 1.0  # Will be set per-timeframe later if needed
-        
+        # tfMultiplier logic from Pine Script:
+        # intraday (<=5m: 0.8, <=60m: 1.0, else 1.2)
+        # daily: 1.3, weekly/monthly: 1.5
+        tf_clean = tf_input.lower().strip()
+        if 'min' in tf_clean:
+            try:
+                m = int(tf_clean.replace('min', ''))
+                tf_multiplier = 0.8 if m <= 5 else 1.0 if m <= 60 else 1.2
+            except: tf_multiplier = 1.0
+        elif 'day' in tf_clean:
+            tf_multiplier = 1.3
+        elif 'week' in tf_clean:
+            tf_multiplier = 1.5
+        else:
+            tf_multiplier = 1.0
+            
         combined_adjust = vol_adjust * trend_adjust * tf_multiplier * sensitivity_mult
         adjust_factor = np.clip(1.0 / combined_adjust, 0.5, 1.5)
         
@@ -439,7 +443,13 @@ def run_scan(indices, timeframes, log_file, **kwargs):
                 df = fetch_yfinance_data(ticker, tf)
                 
                 if df is not None and len(df) >= 200:
-                    signal, angle = apply_ama_pro_tema(df)
+                    # Pass the adaptation parameters down
+                    signal, angle = apply_ama_pro_tema(
+                        df, 
+                        tf_input=tf,
+                        adaptation_speed=adaptation_speed, 
+                        min_bars_between=min_bars_between
+                    )
                     if signal:
                         logging.info(f"*** SIGNAL FOUND *** {index_name} | {tf} | {signal}")
                         results.append({
