@@ -122,11 +122,15 @@ def fetch_yfinance_data(ticker, tf_input, retries=3):
                 logging.warning(f"No data returned for {ticker} at {tf_input}.")
                 return None
             
+            logging.info(f"Raw data head: {data.shape} | Columns: {list(data.columns)}")
+            
             # Clean up yfinance multi-index columns
             if isinstance(data.columns, pd.MultiIndex):
                 data.columns = [col[0].lower() for col in data.columns]
             else:
                 data.columns = [c.lower() for c in data.columns]
+
+            logging.info(f"Cleaned columns: {list(data.columns)}")
 
             if resample_freq:
                 logging.info(f"Resampling to {resample_freq} for {ticker}...")
@@ -136,7 +140,9 @@ def fetch_yfinance_data(ticker, tf_input, retries=3):
                     'volume': 'sum'
                 }).dropna()
             
-            return data.tail(500)  # Enough for EMA200 + regime stability
+            final_df = data.tail(500)
+            logging.info(f"Final DF length for {ticker} {tf_input}: {len(final_df)}")
+            return final_df
             
         except Exception as e:
             logging.error(f"Attempt {attempt} failed for {ticker}: {str(e)}")
@@ -316,10 +322,10 @@ def apply_ama_pro_tema(df):
         df['shortValid'] = short_valid
         
         # =================================================================
-        # DEBUG: Log the state of last 5 candles
+        # DEBUG: Log the state of last 10 candles
         # =================================================================
-        logging.info("--- Signal check on last 5 candles ---")
-        for k in range(5, 0, -1):
+        logging.info("--- Signal check on last 10 candles ---")
+        for k in range(10, 0, -1):
             idx_k = -k
             if abs(idx_k) < len(df):
                 row = df.iloc[idx_k]
@@ -335,34 +341,24 @@ def apply_ama_pro_tema(df):
         # =================================================================
         # CHECK THE PREVIOUS CANDLE for longValid / shortValid
         # =================================================================
-        # In yfinance data:
-        #   - Market OPEN: last bar (-1) may be forming, previous = -2
-        #   - Market CLOSED: all bars complete, previous = -1
-        # 
-        # To be safe, we check the LAST candle first (-1), then -2.
-        # The Pine Script checks the "previous candle" = last completed bar.
-        # We check -1 first; if it has a signal, use it. Otherwise check -2.
+        # Per user requirement: ONLY check the previous completed candle.
+        # Index -1 = Current/Forming candle (Live)
+        # Index -2 = Previous completed candle
         
         signal = None
         crossover_angle = None
-        signal_idx = None
+        signal_idx = -2  # ALWAYS check the previous closed candle
         
-        for check_idx in [-1, -2]:
-            if abs(check_idx) >= len(df):
-                continue
-            if df['longValid'].iloc[check_idx]:
+        if abs(signal_idx) < len(df):
+            if df['longValid'].iloc[signal_idx]:
                 signal = "LONG"
-                signal_idx = check_idx
-                logging.info(f"  >>> LONG VALID found at candle[{check_idx}]")
-                break
-            elif df['shortValid'].iloc[check_idx]:
+                logging.info(f"  >>> LONG VALID found at previous candle[{signal_idx}]")
+            elif df['shortValid'].iloc[signal_idx]:
                 signal = "SHORT"
-                signal_idx = check_idx
-                logging.info(f"  >>> SHORT VALID found at candle[{check_idx}]")
-                break
+                logging.info(f"  >>> SHORT VALID found at previous candle[{signal_idx}]")
         
         if signal is None:
-            logging.info("  No longValid or shortValid on previous candles.")
+            logging.info(f"  No valid signal on previous candle (index {signal_idx}).")
             return None, None
         
         # Calculate crossover angle
