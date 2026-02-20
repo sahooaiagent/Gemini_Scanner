@@ -1,0 +1,483 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © sahooss
+
+//@version=6
+indicator("AMA PRO TEMA", shorttitle="AMA PRO TEMA", overlay=true)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADAPTIVE TRADING SYSTEM - Pine Script v6 - TEMA VERSION
+// ═══════════════════════════════════════════════════════════════════════════════
+// Fully adaptive parameters based on market regime and asset characteristics
+// Using Triple Exponential Moving Averages (TEMA) for reduced lag
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTION 1: USER INPUTS (IDENTICAL TO ORIGINAL)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+adaptiveGroup = "🎯 Adaptive System Controls"
+i_enableAdaptive = input.bool(true, "Enable Adaptive Parameters", group=adaptiveGroup)
+i_adaptiveSensitivity = input.string("Medium", "Adaptation Speed", options=["Low", "Medium", "High"], group=adaptiveGroup)
+i_showRegimeInfo = input.bool(true, "Show Market Regime Info", group=adaptiveGroup)
+i_regimeAlerts = input.bool(true, "Alert on Regime Change", group=adaptiveGroup)
+
+boundsGroup = "📊 Parameter Bounds"
+i_emaFastMin = input.int(8, "TEMA Fast: Min", minval=3, maxval=30, group=boundsGroup)
+i_emaFastMax = input.int(21, "TEMA Fast: Max", minval=10, maxval=50, group=boundsGroup)
+i_emaSlowMin = input.int(21, "TEMA Slow: Min", minval=15, maxval=50, group=boundsGroup)
+i_emaSlowMax = input.int(55, "TEMA Slow: Max", minval=30, maxval=100, group=boundsGroup)
+i_rsiMin = input.int(10, "RSI: Min", minval=7, maxval=21, group=boundsGroup)
+i_rsiMax = input.int(21, "RSI: Max", minval=14, maxval=35, group=boundsGroup)
+i_bbLengthMin = input.int(14, "BB: Min", minval=10, maxval=25, group=boundsGroup)
+i_bbLengthMax = input.int(34, "BB: Max", minval=20, maxval=50, group=boundsGroup)
+
+manualGroup = "⚙️ Manual Parameters"
+i_manualEmaFast = input.int(12, "TEMA Fast", minval=3, group=manualGroup)
+i_manualEmaSlow = input.int(26, "TEMA Slow", minval=10, group=manualGroup)
+i_manualRsi = input.int(14, "RSI Period", minval=7, group=manualGroup)
+i_manualBbLength = input.int(20, "BB Period", minval=10, group=manualGroup)
+
+regimeGroup = "🔍 Regime Detection"
+i_adxLength = input.int(14, "ADX Period", minval=7, maxval=28, group=regimeGroup)
+i_adxThreshold = input.int(25, "ADX Threshold", minval=15, maxval=40, group=regimeGroup)
+i_volLookback = input.int(50, "Volatility Lookback", minval=20, maxval=200, group=regimeGroup)
+i_regimeStability = input.int(3, "Regime Stability", minval=1, maxval=10, group=regimeGroup)
+
+assetGroup = "💱 Asset Type"
+i_autoDetectAsset = input.bool(true, "Auto-Detect", group=assetGroup)
+i_manualAssetType = input.string("Crypto", "Manual Type", options=["Forex", "Crypto", "Stock", "Commodity"], group=assetGroup)
+
+filterGroup = "🔧 Signal Filtering"
+i_minBarsBetween = input.int(3, "Min Bars Between Signals", minval=1, maxval=20, group=filterGroup)
+i_useVolumeFilter = input.bool(false, "Volume Confirmation", group=filterGroup)
+i_volumeMultiplier = input.float(1.3, "Volume Multiplier", minval=1.0, maxval=3.0, step=0.1, group=filterGroup)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTION 2: ASSET DETECTION (IDENTICAL TO ORIGINAL)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+detectAssetType() =>
+    sym = syminfo.ticker
+    pfx = syminfo.prefix
+    
+    isCrypto = str.contains(sym, "BTC") or str.contains(sym, "ETH") or 
+               str.contains(sym, "USDT") or str.contains(pfx, "BINANCE") or 
+               str.contains(pfx, "COINBASE") or str.contains(pfx, "CRYPTO")
+    
+    isForex = (str.length(sym) == 6 and not str.contains(sym, "BTC")) or 
+              str.contains(pfx, "FX") or str.contains(pfx, "OANDA") or 
+              str.contains(pfx, "FOREX")
+    
+    isCommodity = str.contains(sym, "GOLD") or str.contains(sym, "OIL") or 
+                  str.contains(sym, "SILVER") or str.contains(pfx, "COMEX")
+    
+    isCrypto ? "Crypto" : isForex ? "Forex" : isCommodity ? "Commodity" : "Stock"
+
+assetType = i_autoDetectAsset ? detectAssetType() : i_manualAssetType
+
+// Asset multipliers
+assetVolFactor = assetType == "Crypto" ? 1.5 : assetType == "Forex" ? 1.0 : assetType == "Commodity" ? 1.2 : 0.8
+assetTrendFactor = assetType == "Crypto" ? 1.3 : assetType == "Forex" ? 0.9 : assetType == "Commodity" ? 1.1 : 1.0
+assetMRFactor = assetType == "Crypto" ? 0.7 : assetType == "Forex" ? 1.2 : assetType == "Commodity" ? 0.9 : 1.0
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTION 3: MARKET REGIME DETECTION (IDENTICAL TO ORIGINAL)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ADX Calculation
+calcADX(len) =>
+    up = ta.change(high)
+    down = -ta.change(low)
+    plusDM = na(up) ? na : (up > down and up > 0 ? up : 0)
+    minusDM = na(down) ? na : (down > up and down > 0 ? down : 0)
+    trur = ta.rma(ta.tr, len)
+    plus = fixnan(100 * ta.rma(plusDM, len) / trur)
+    minus = fixnan(100 * ta.rma(minusDM, len) / trur)
+    sum = plus + minus
+    100 * ta.rma(math.abs(plus - minus) / (sum == 0 ? 1 : sum), len)
+
+adxValue = calcADX(i_adxLength)
+
+// Volatility
+atr = ta.atr(14)
+atrPercent = (atr / close) * 100
+historicalATR = ta.sma(atr, i_volLookback)
+atrRatio = atr / historicalATR
+
+returns = math.log(close / close[1])
+volatility = ta.stdev(returns, i_volLookback) * math.sqrt(252) * 100
+historicalVol = ta.sma(volatility, i_volLookback)
+volRatio = volatility / historicalVol
+
+// Trend
+ema20 = ta.ema(close, 20)
+ema50 = ta.ema(close, 50)
+ema200 = ta.ema(close, 200)
+trendAlignment = (close > ema20 and ema20 > ema50 and ema50 > ema200) ? 1 : 
+                 (close < ema20 and ema20 < ema50 and ema50 < ema200) ? -1 : 0
+
+roc10 = ta.roc(close, 10)
+roc20 = ta.roc(close, 20)
+momentum = (roc10 + roc20) / 2
+
+// Regime Classification
+volRegime = volRatio > 1.3 ? "High" : volRatio < 0.7 ? "Low" : "Normal"
+trendRegime = adxValue > i_adxThreshold ? "Trending" : "Ranging"
+directionRegime = trendAlignment > 0 ? "Bullish" : trendAlignment < 0 ? "Bearish" : "Neutral"
+
+// Stable regime with confirmation
+var string stableRegime = "Neutral-Normal-Ranging"
+var int regimeCounter = 0
+
+currentRegime = directionRegime + "-" + volRegime + "-" + trendRegime
+
+if currentRegime != stableRegime
+    regimeCounter += 1
+    if regimeCounter >= i_regimeStability
+        stableRegime := currentRegime
+        regimeCounter := 0
+else
+    regimeCounter := 0
+
+regimeIsBullish = str.contains(stableRegime, "Bullish")
+regimeIsBearish = str.contains(stableRegime, "Bearish")
+regimeIsHighVol = str.contains(stableRegime, "High")
+regimeIsLowVol = str.contains(stableRegime, "Low")
+regimeIsTrending = str.contains(stableRegime, "Trending")
+regimeIsRanging = str.contains(stableRegime, "Ranging")
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTION 4: ADAPTIVE PARAMETERS - TEMA VERSION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// TEMA Calculation Function
+tema(src, length) =>
+    ema1 = ta.ema(src, length)
+    ema2 = ta.ema(ema1, length)
+    ema3 = ta.ema(ema2, length)
+    3 * ema1 - 3 * ema2 + ema3
+
+// Sensitivity multiplier
+sensitivityMult = i_adaptiveSensitivity == "High" ? 1.5 : i_adaptiveSensitivity == "Low" ? 0.5 : 1.0
+
+// Calculate adjustment factors
+volAdjust = regimeIsHighVol ? 0.7 : regimeIsLowVol ? 1.3 : 1.0
+trendAdjust = regimeIsTrending ? 0.8 : 1.2
+tfMultiplier = timeframe.isintraday ? 
+               (timeframe.multiplier <= 5 ? 0.8 : timeframe.multiplier <= 60 ? 1.0 : 1.2) : 
+               timeframe.isdaily ? 1.3 : 1.5
+
+combinedAdjust = volAdjust * trendAdjust * tfMultiplier * sensitivityMult
+adjustFactor = math.max(0.5, math.min(1.5, 1.0 / combinedAdjust))
+
+// Calculate adaptive periods (as floats first, then convert)
+fastRange = i_emaFastMax - i_emaFastMin
+slowRange = i_emaSlowMax - i_emaSlowMin
+rsiRange = i_rsiMax - i_rsiMin
+bbRange = i_bbLengthMax - i_bbLengthMin
+
+adaptiveEmaFastFloat = i_emaFastMin + fastRange * (1 - adjustFactor)
+adaptiveEmaSlowFloat = i_emaSlowMin + slowRange * (1 - adjustFactor)
+
+// Ensure separation (TEMA needs slightly larger separation due to reduced lag)
+if adaptiveEmaSlowFloat - adaptiveEmaFastFloat < 6
+    adaptiveEmaSlowFloat := adaptiveEmaFastFloat + 6
+
+// RSI adaptive period
+rsiTrendFactor = regimeIsTrending ? 0.7 : 1.3
+rsiVolFactor = regimeIsHighVol ? 0.8 : 1.2
+adaptiveRsiFloat = i_rsiMin + rsiRange * rsiTrendFactor * rsiVolFactor * sensitivityMult
+adaptiveRsiFloat := math.max(i_rsiMin, math.min(i_rsiMax, adaptiveRsiFloat))
+
+// BB adaptive period
+bbVolFactor = regimeIsHighVol ? 0.6 : regimeIsLowVol ? 1.4 : 1.0
+adaptiveBBFloat = i_bbLengthMin + bbRange * bbVolFactor * sensitivityMult
+adaptiveBBFloat := math.max(i_bbLengthMin, math.min(i_bbLengthMax, adaptiveBBFloat))
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PRE-CALCULATE TEMA VALUES FOR DIFFERENT PERIODS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Fast TEMA periods
+tema_8 = tema(close, 8)
+tema_10 = tema(close, 10)
+tema_12 = tema(close, 12)
+tema_14 = tema(close, 14)
+tema_16 = tema(close, 16)
+tema_18 = tema(close, 18)
+tema_21 = tema(close, 21)
+
+// Slow TEMA periods
+tema_26 = tema(close, 26)
+tema_30 = tema(close, 30)
+tema_34 = tema(close, 34)
+tema_38 = tema(close, 38)
+tema_42 = tema(close, 42)
+tema_47 = tema(close, 47)
+tema_55 = tema(close, 55)
+
+// RSI values (unchanged)
+rsi_10 = ta.rsi(close, 10)
+rsi_12 = ta.rsi(close, 12)
+rsi_14 = ta.rsi(close, 14)
+rsi_16 = ta.rsi(close, 16)
+rsi_18 = ta.rsi(close, 18)
+rsi_21 = ta.rsi(close, 21)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SELECT APPROPRIATE TEMA BASED ON ADAPTIVE CALCULATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+temaFast = i_enableAdaptive ? 
+          (adaptiveEmaFastFloat <= 9 ? tema_8 :
+           adaptiveEmaFastFloat <= 11 ? tema_10 :
+           adaptiveEmaFastFloat <= 13 ? tema_12 :
+           adaptiveEmaFastFloat <= 15 ? tema_14 :
+           adaptiveEmaFastFloat <= 17 ? tema_16 :
+           adaptiveEmaFastFloat <= 19 ? tema_18 : tema_21) :
+          tema(close, i_manualEmaFast)
+
+temaSlow = i_enableAdaptive ?
+          (adaptiveEmaSlowFloat <= 28 ? tema_26 :
+           adaptiveEmaSlowFloat <= 32 ? tema_30 :
+           adaptiveEmaSlowFloat <= 36 ? tema_34 :
+           adaptiveEmaSlowFloat <= 40 ? tema_38 :
+           adaptiveEmaSlowFloat <= 44 ? tema_42 :
+           adaptiveEmaSlowFloat <= 51 ? tema_47 : tema_55) :
+          tema(close, i_manualEmaSlow)
+
+rsi = i_enableAdaptive ?
+      (adaptiveRsiFloat <= 11 ? rsi_10 :
+       adaptiveRsiFloat <= 13 ? rsi_12 :
+       adaptiveRsiFloat <= 15 ? rsi_14 :
+       adaptiveRsiFloat <= 17 ? rsi_16 :
+       adaptiveRsiFloat <= 19 ? rsi_18 : rsi_21) :
+      ta.rsi(close, i_manualRsi)
+
+// Bollinger Bands - use simple int
+bbPeriod = i_enableAdaptive ? 
+           math.round(math.max(i_bbLengthMin, math.min(i_bbLengthMax, adaptiveBBFloat))) : 
+           i_manualBbLength
+
+bbMultiplier = regimeIsHighVol ? 2.5 : regimeIsLowVol ? 1.8 : 2.1
+bbBasis = ta.sma(close, bbPeriod)
+bbDev = ta.stdev(close, bbPeriod)
+bbUpper = bbBasis + bbMultiplier * bbDev
+bbLower = bbBasis - bbMultiplier * bbDev
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADAPTIVE RSI THRESHOLDS (IDENTICAL TO ORIGINAL)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+lookbackPeriod = 50
+rsiLowest = ta.lowest(rsi, lookbackPeriod)
+rsiHighest = ta.highest(rsi, lookbackPeriod)
+rsiRange1 = rsiHighest - rsiLowest
+float rsiOversold = na
+float rsiOverbought = na
+// Only use adaptive thresholds if range is reasonable
+useAdaptiveThresholds = i_enableAdaptive and rsiRange1 > 20 and rsiRange1 < 80
+
+if useAdaptiveThresholds
+    rsiLowerThreshold = rsiLowest + rsiRange * 0.2
+    rsiUpperThreshold = rsiHighest - rsiRange * 0.2
+    
+    if regimeIsHighVol
+        rsiLowerThreshold := rsiLowerThreshold * 0.9
+        rsiUpperThreshold := rsiUpperThreshold * 1.1
+    
+    rsiOversold := math.max(25, math.min(35, rsiLowerThreshold))
+    rsiOverbought := math.max(65, math.min(75, rsiUpperThreshold))
+else
+    rsiOversold := 30
+    rsiOverbought := 70
+
+// Volume
+vwapValue = ta.vwap(close)
+volumeMA = ta.sma(volume, 30)
+volumeSpike = volume > volumeMA * i_volumeMultiplier
+
+// Price position
+pricePosition = (close - bbLower) / (bbUpper - bbLower)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTION 5: STRATEGY LOGIC (USING TEMA INSTEAD OF EMA)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+var string strategyMode = "balanced"
+
+if i_enableAdaptive
+    if regimeIsRanging and regimeIsLowVol
+        strategyMode := "mean_reversion"
+    else if regimeIsTrending and regimeIsHighVol
+        strategyMode := "trend_following"
+    else
+        strategyMode := "balanced"
+
+longCondition = false
+shortCondition = false
+
+// Use TEMA crossovers for signals
+if strategyMode == "mean_reversion"
+    // Mean reversion - TEMA crossovers
+    longCondition := ta.crossover(temaFast, temaSlow)
+    shortCondition := ta.crossunder(temaFast, temaSlow)
+    
+else if strategyMode == "trend_following"
+    // Trend following - TEMA crossovers
+    longCondition := ta.crossover(temaFast, temaSlow)
+    shortCondition := ta.crossunder(temaFast, temaSlow)
+    
+else
+    // Balanced approach - TEMA crossovers
+    longCondition := ta.crossover(temaFast, temaSlow)
+    shortCondition := ta.crossunder(temaFast, temaSlow)
+    
+// Apply volume filter only if enabled
+if i_useVolumeFilter
+    longCondition := longCondition and volumeSpike
+    shortCondition := shortCondition and volumeSpike
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTION 6: SIGNAL FILTERING (IDENTICAL TO ORIGINAL)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+var int barsSinceLastLong = 999
+var int barsSinceLastShort = 999
+
+if longCondition
+    barsSinceLastLong := 0
+else
+    barsSinceLastLong += 1
+
+if shortCondition
+    barsSinceLastShort := 0
+else
+    barsSinceLastShort += 1
+
+longValid = longCondition and barsSinceLastLong >= i_minBarsBetween
+shortValid = shortCondition and barsSinceLastShort >= i_minBarsBetween
+
+if longValid and shortValid
+    if regimeIsBullish
+        shortValid := false
+    else if regimeIsBearish
+        longValid := false
+    else
+        if momentum > 0
+            shortValid := false
+        else
+            longValid := false
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTION 7: VISUALIZATION - TEMA VERSION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+plot(temaFast, "TEMA Fast", color=color.new(color.blue, 0), linewidth=2)
+plot(temaSlow, "TEMA Slow", color=color.new(color.red, 0), linewidth=2)
+
+p1 = plot(bbUpper, "BB Upper", color=#ffee00)
+p2 = plot(bbLower, "BB Lower", color=#ffee00)
+//fill(p1, p2, color=color.new(color.gray, 90))
+
+plot(vwapValue, "VWAP", color=#ffa33b, linewidth=2, style=plot.style_cross, display = display.none)
+
+plotshape(longValid, "BUY", shape.triangleup, location.belowbar, color.new(color.green, 0), text="L", textcolor=color.white, size=size.small)
+plotshape(shortValid, "SELL", shape.triangledown, location.abovebar, color.new(color.red, 0), text="S", textcolor=color.white, size=size.small)
+
+// Debug: Show when basic conditions are met (even if not valid signal)
+plotshape(
+     longCondition, 
+     "Long Cond", 
+     shape.circle, 
+     location.belowbar, 
+     #0004ff, 
+     size=size.tiny
+)
+
+plotshape(
+     shortCondition, 
+     "Short Cond", 
+     shape.circle, 
+     location.abovebar, 
+     #f700e7, 
+     size=size.tiny
+)
+
+// Color bars where circles appear
+showLongCircle = longCondition
+showShortCircle = shortCondition
+barcolor(showLongCircle ? #0004ff : showShortCircle ? #f700e7 : na)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTION 8: INFO TABLE - UPDATED FOR TEMA
+// ═══════════════════════════════════════════════════════════════════════════════
+
+if i_showRegimeInfo
+    var table infoTable = table.new(position.top_right, 2, 12, 
+                                     bgcolor=color.new(color.black, 85), 
+                                     frame_color=color.gray, 
+                                     frame_width=1, 
+                                     border_width=1)
+    
+    if barstate.islast
+        table.cell(infoTable, 0, 0, "Parameter", text_color=color.white, bgcolor=color.new(color.blue, 70), text_size=size.small)
+        table.cell(infoTable, 1, 0, "Value", text_color=color.white, bgcolor=color.new(color.blue, 70), text_size=size.small)
+        
+        table.cell(infoTable, 0, 1, "Asset Type", text_color=color.white, text_size=size.small)
+        table.cell(infoTable, 1, 1, assetType, text_color=color.yellow, text_size=size.small)
+        
+        table.cell(infoTable, 0, 2, "Market Regime", text_color=color.white, text_size=size.small)
+        table.cell(infoTable, 1, 2, stableRegime, text_color=color.yellow, text_size=size.small)
+        
+        table.cell(infoTable, 0, 3, "Strategy Mode", text_color=color.white, text_size=size.small)
+        modeColor = strategyMode == "trend_following" ? color.green : strategyMode == "mean_reversion" ? color.blue : color.orange
+        table.cell(infoTable, 1, 3, strategyMode, text_color=modeColor, text_size=size.small)
+        
+        table.cell(infoTable, 0, 4, "TEMA Fast", text_color=color.white, text_size=size.small)
+        temaFastPeriod = str.tostring(math.round(adaptiveEmaFastFloat))
+        table.cell(infoTable, 1, 4, temaFastPeriod, text_color=color.aqua, text_size=size.small)
+        
+        table.cell(infoTable, 0, 5, "TEMA Slow", text_color=color.white, text_size=size.small)
+        temaSlowPeriod = str.tostring(math.round(adaptiveEmaSlowFloat))
+        table.cell(infoTable, 1, 5, temaSlowPeriod, text_color=color.aqua, text_size=size.small)
+        
+        table.cell(infoTable, 0, 6, "RSI Period", text_color=color.white, text_size=size.small)
+        rsiPeriodStr = str.tostring(math.round(adaptiveRsiFloat))
+        table.cell(infoTable, 1, 6, rsiPeriodStr, text_color=color.aqua, text_size=size.small)
+        
+        table.cell(infoTable, 0, 7, "BB Period", text_color=color.white, text_size=size.small)
+        table.cell(infoTable, 1, 7, str.tostring(bbPeriod), text_color=color.aqua, text_size=size.small)
+        
+        table.cell(infoTable, 0, 8, "ADX", text_color=color.white, text_size=size.small)
+        adxColorVal = adxValue > i_adxThreshold ? color.green : color.red
+        table.cell(infoTable, 1, 8, str.tostring(math.round(adxValue, 1)), text_color=adxColorVal, text_size=size.small)
+        
+        table.cell(infoTable, 0, 9, "ATR %", text_color=color.white, text_size=size.small)
+        table.cell(infoTable, 1, 9, str.tostring(math.round(atrPercent, 2)) + "%", text_color=color.aqua, text_size=size.small)
+        
+        table.cell(infoTable, 0, 10, "RSI", text_color=color.white, text_size=size.small)
+        rsiColorVal = rsi < rsiOversold ? color.green : rsi > rsiOverbought ? color.red : color.white
+        table.cell(infoTable, 1, 10, str.tostring(math.round(rsi, 1)), text_color=rsiColorVal, text_size=size.small)
+        
+        table.cell(infoTable, 0, 11, "Volatility", text_color=color.white, text_size=size.small)
+        volColorVal = regimeIsHighVol ? color.red : regimeIsLowVol ? color.green : color.white
+        table.cell(infoTable, 1, 11, volRegime, text_color=volColorVal, text_size=size.small)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTION 9: ALERTS (IDENTICAL TO ORIGINAL)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+var string previousRegime = stableRegime
+regimeChanged = stableRegime != previousRegime
+previousRegime := stableRegime
+
+// Fixed alert messages (const string required)
+alertcondition(longValid, title="Long Signal", message="LONG Signal (TEMA)")
+alertcondition(shortValid, title="Short Signal", message="SHORT Signal (TEMA)")
+alertcondition(regimeChanged and i_regimeAlerts, title="Regime Change", message="Regime Changed")
+alertcondition(longValid or shortValid, title="Any Signal", message="Trading Signal (TEMA)")
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// END
+// ═══════════════════════════════════════════════════════════════════════════════
