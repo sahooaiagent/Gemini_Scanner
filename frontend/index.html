@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,359 +8,382 @@
     <meta name="description" content="Enterprise-grade financial signal scanner with real-time market analysis">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
 
-<!-- ════════════════════════════════════════════════════════════════════
+    <!-- ════════════════════════════════════════════════════════════════════
      ANIMATED BACKGROUND
      ════════════════════════════════════════════════════════════════════ -->
-<div class="bg-canvas" id="bgCanvas">
-    <div class="grid-overlay"></div>
-    <div class="glow-orb orb-1"></div>
-    <div class="glow-orb orb-2"></div>
-    <div class="glow-orb orb-3"></div>
-</div>
+    <div class="bg-canvas" id="bgCanvas">
+        <div class="grid-overlay"></div>
+        <div class="glow-orb orb-1"></div>
+        <div class="glow-orb orb-2"></div>
+        <div class="glow-orb orb-3"></div>
+    </div>
 
-<!-- ════════════════════════════════════════════════════════════════════
+    <!-- ════════════════════════════════════════════════════════════════════
      MARKET TICKER TAPE
      ════════════════════════════════════════════════════════════════════ -->
-<div class="ticker-tape" id="tickerTape">
-    <div class="ticker-track" id="tickerTrack">
-        <!-- Populated by JS -->
+    <div class="ticker-tape" id="tickerTape">
+        <div class="ticker-track" id="tickerTrack">
+            <!-- Populated by JS -->
+        </div>
     </div>
-</div>
 
-<!-- ════════════════════════════════════════════════════════════════════
+    <!-- ════════════════════════════════════════════════════════════════════
      SIDEBAR NAVIGATION
      ════════════════════════════════════════════════════════════════════ -->
-<aside class="sidebar" id="sidebar">
-    <div class="sidebar-brand">
-        <div class="brand-icon">
-            <i class="fas fa-atom"></i>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">
+                <i class="fas fa-atom"></i>
+            </div>
+            <div class="brand-text">
+                <h2>Gemini</h2>
+                <span class="brand-badge">ENTERPRISE</span>
+            </div>
         </div>
-        <div class="brand-text">
-            <h2>Gemini</h2>
-            <span class="brand-badge">ENTERPRISE</span>
+
+        <nav class="sidebar-nav">
+            <a class="nav-link active" data-tab="dashboard" id="nav-dashboard">
+                <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
+                <span>Dashboard</span>
+                <div class="nav-indicator"></div>
+            </a>
+            <a class="nav-link" data-tab="scanner" id="nav-scanner">
+                <div class="nav-icon"><i class="fas fa-radar"></i></div>
+                <span>Scanner</span>
+                <div class="nav-indicator"></div>
+            </a>
+            <a class="nav-link" data-tab="diagnostics" id="nav-diagnostics">
+                <div class="nav-icon"><i class="fas fa-terminal"></i></div>
+                <span>Diagnostics</span>
+                <div class="nav-indicator"></div>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="connection-status" id="connectionStatus">
+                <div class="status-dot offline"></div>
+                <span>Disconnected</span>
+            </div>
+            <div class="sidebar-version">v2.0 Enterprise</div>
         </div>
-    </div>
+    </aside>
 
-    <nav class="sidebar-nav">
-        <a class="nav-link active" data-tab="dashboard" id="nav-dashboard">
-            <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
-            <span>Dashboard</span>
-            <div class="nav-indicator"></div>
-        </a>
-        <a class="nav-link" data-tab="scanner" id="nav-scanner">
-            <div class="nav-icon"><i class="fas fa-radar"></i></div>
-            <span>Scanner</span>
-            <div class="nav-indicator"></div>
-        </a>
-        <a class="nav-link" data-tab="diagnostics" id="nav-diagnostics">
-            <div class="nav-icon"><i class="fas fa-terminal"></i></div>
-            <span>Diagnostics</span>
-            <div class="nav-indicator"></div>
-        </a>
-    </nav>
-
-    <div class="sidebar-footer">
-        <div class="connection-status" id="connectionStatus">
-            <div class="status-dot offline"></div>
-            <span>Disconnected</span>
-        </div>
-        <div class="sidebar-version">v2.0 Enterprise</div>
-    </div>
-</aside>
-
-<!-- ════════════════════════════════════════════════════════════════════
+    <!-- ════════════════════════════════════════════════════════════════════
      MOBILE HEADER
      ════════════════════════════════════════════════════════════════════ -->
-<div class="mobile-header">
-    <button class="hamburger" id="hamburgerBtn">
-        <span></span><span></span><span></span>
-    </button>
-    <div class="mobile-brand">
-        <i class="fas fa-atom"></i> Gemini
+    <div class="mobile-header">
+        <button class="hamburger" id="hamburgerBtn">
+            <span></span><span></span><span></span>
+        </button>
+        <div class="mobile-brand">
+            <i class="fas fa-atom"></i> Gemini
+        </div>
     </div>
-</div>
 
-<!-- ════════════════════════════════════════════════════════════════════
+    <!-- ════════════════════════════════════════════════════════════════════
      MAIN CONTENT
      ════════════════════════════════════════════════════════════════════ -->
-<main class="main-content" id="mainContent">
+    <main class="main-content" id="mainContent">
 
-    <!-- ──── DASHBOARD TAB ──── -->
-    <section class="tab-content active" id="tab-dashboard">
-        <header class="page-header">
-            <div>
-                <h1 class="page-title">Market Intelligence</h1>
-                <p class="page-subtitle">Real-time signal detection across global indices</p>
-            </div>
-            <div class="header-actions">
-                <button class="btn btn-ghost" id="refreshBtn" title="Refresh Data">
-                    <i class="fas fa-sync-alt"></i>
-                </button>
-                <div class="live-clock" id="liveClock"></div>
-            </div>
-        </header>
-
-        <!-- Stats Row -->
-        <div class="stats-grid">
-            <div class="stat-card" data-accent="cyan">
-                <div class="stat-icon-wrap">
-                    <i class="fas fa-signal"></i>
+        <!-- ──── DASHBOARD TAB ──── -->
+        <section class="tab-content active" id="tab-dashboard">
+            <header class="page-header">
+                <div>
+                    <h1 class="page-title">Market Intelligence</h1>
+                    <p class="page-subtitle">Real-time signal detection across global indices</p>
                 </div>
-                <div class="stat-body">
-                    <span class="stat-value" id="totalSignals">0</span>
-                    <span class="stat-label">Total Signals</span>
-                </div>
-                <div class="stat-sparkline" id="sparkTotal"></div>
-            </div>
-            <div class="stat-card" data-accent="green">
-                <div class="stat-icon-wrap">
-                    <i class="fas fa-arrow-trend-up"></i>
-                </div>
-                <div class="stat-body">
-                    <span class="stat-value" id="longSignals">0</span>
-                    <span class="stat-label">Long Signals</span>
-                </div>
-                <div class="stat-sparkline" id="sparkLong"></div>
-            </div>
-            <div class="stat-card" data-accent="red">
-                <div class="stat-icon-wrap">
-                    <i class="fas fa-arrow-trend-down"></i>
-                </div>
-                <div class="stat-body">
-                    <span class="stat-value" id="shortSignals">0</span>
-                    <span class="stat-label">Short Signals</span>
-                </div>
-                <div class="stat-sparkline" id="sparkShort"></div>
-            </div>
-            <div class="stat-card" data-accent="purple">
-                <div class="stat-icon-wrap">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="stat-body">
-                    <span class="stat-value" id="lastScanTime">—</span>
-                    <span class="stat-label">Last Scan</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Market Heatmap -->
-        <div class="card" id="heatmapCard">
-            <div class="card-header">
-                <h2><i class="fas fa-th"></i> Market Heatmap</h2>
-            </div>
-            <div class="heatmap-grid" id="heatmapGrid">
-                <!-- Populated by JS -->
-            </div>
-        </div>
-
-        <!-- Signal Results Table -->
-        <div class="card" id="signalsCard">
-            <div class="card-header">
-                <h2><i class="fas fa-bolt"></i> Detected Signals</h2>
-                <div class="card-actions">
-                    <button class="btn btn-sm btn-ghost" id="exportCsvBtn">
-                        <i class="fas fa-download"></i> Export
+                <div class="header-actions">
+                    <button class="btn btn-ghost" id="refreshBtn" title="Refresh Data">
+                        <i class="fas fa-sync-alt"></i>
                     </button>
+                    <div class="live-clock" id="liveClock"></div>
+                </div>
+            </header>
+
+            <!-- Stats Row -->
+            <div class="stats-grid">
+                <div class="stat-card" data-accent="cyan">
+                    <div class="stat-icon-wrap">
+                        <i class="fas fa-signal"></i>
+                    </div>
+                    <div class="stat-body">
+                        <span class="stat-value" id="totalSignals">0</span>
+                        <span class="stat-label">Total Signals</span>
+                    </div>
+                    <div class="stat-sparkline" id="sparkTotal"></div>
+                </div>
+                <div class="stat-card" data-accent="green">
+                    <div class="stat-icon-wrap">
+                        <i class="fas fa-arrow-trend-up"></i>
+                    </div>
+                    <div class="stat-body">
+                        <span class="stat-value" id="longSignals">0</span>
+                        <span class="stat-label">Long Signals</span>
+                    </div>
+                    <div class="stat-sparkline" id="sparkLong"></div>
+                </div>
+                <div class="stat-card" data-accent="red">
+                    <div class="stat-icon-wrap">
+                        <i class="fas fa-arrow-trend-down"></i>
+                    </div>
+                    <div class="stat-body">
+                        <span class="stat-value" id="shortSignals">0</span>
+                        <span class="stat-label">Short Signals</span>
+                    </div>
+                    <div class="stat-sparkline" id="sparkShort"></div>
+                </div>
+                <div class="stat-card" data-accent="purple">
+                    <div class="stat-icon-wrap">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-body">
+                        <span class="stat-value" id="lastScanTime">—</span>
+                        <span class="stat-label">Last Scan</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Filters -->
-            <div class="filters-bar">
-                <div class="search-input-wrap">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="searchInput" placeholder="Search signals..." autocomplete="off">
+            <!-- Market Heatmap -->
+            <div class="card" id="heatmapCard">
+                <div class="card-header">
+                    <h2><i class="fas fa-th"></i> Market Heatmap</h2>
                 </div>
-                <div class="filter-chips" id="signalFilterChips">
-                    <button class="chip active" data-filter="all">All</button>
-                    <button class="chip" data-filter="LONG">
-                        <span class="chip-dot green"></span> Long
-                    </button>
-                    <button class="chip" data-filter="SHORT">
-                        <span class="chip-dot red"></span> Short
-                    </button>
-                </div>
-                <select class="filter-dropdown" id="tfFilter">
-                    <option value="all">All Timeframes</option>
-                </select>
-            </div>
-
-            <!-- Table -->
-            <div class="table-wrap">
-                <table id="signalsTable">
-                    <thead>
-                        <tr>
-                            <th class="sortable" data-col="name">
-                                <span>Index</span>
-                                <i class="fas fa-sort sort-icon"></i>
-                            </th>
-                            <th class="sortable" data-col="timeframe">
-                                <span>Timeframe</span>
-                                <i class="fas fa-sort sort-icon"></i>
-                            </th>
-                            <th class="sortable" data-col="signal">
-                                <span>Signal</span>
-                                <i class="fas fa-sort sort-icon"></i>
-                            </th>
-                            <th class="sortable" data-col="angle">
-                                <span>Angle</span>
-                                <i class="fas fa-sort sort-icon"></i>
-                            </th>
-                            <th class="sortable" data-col="change">
-                                <span>Daily Chg</span>
-                                <i class="fas fa-sort sort-icon"></i>
-                            </th>
-                            <th>Timestamp</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="signalsBody">
-                        <!-- Populated by JS -->
-                    </tbody>
-                </table>
-                <div class="empty-state" id="emptyState">
-                    <i class="fas fa-satellite-dish"></i>
-                    <p>No signals detected yet</p>
-                    <span>Run a scan to detect market signals</span>
+                <div class="heatmap-grid" id="heatmapGrid">
+                    <!-- Populated by JS -->
                 </div>
             </div>
-            <div class="table-footer">
-                <span id="resultCount">0 results</span>
-            </div>
-        </div>
-    </section>
 
-    <!-- ──── SCANNER TAB ──── -->
-    <section class="tab-content" id="tab-scanner">
-        <header class="page-header">
-            <div>
-                <h1 class="page-title">Signal Scanner</h1>
-                <p class="page-subtitle">Configure and run market analysis</p>
-            </div>
-        </header>
+            <!-- Signal Results Table -->
+            <div class="card" id="signalsCard">
+                <div class="card-header">
+                    <h2><i class="fas fa-bolt"></i> Detected Signals</h2>
+                    <div class="card-actions">
+                        <button class="btn btn-sm btn-ghost" id="exportCsvBtn">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                </div>
 
-        <div class="scanner-layout">
-            <div class="card scanner-config-card">
-                <h2><i class="fas fa-sliders-h"></i> Scan Configuration</h2>
-                
-                <div class="config-grid">
-                    <div class="config-section">
-                        <label class="config-label">Market Indices</label>
-                        <div class="index-chips" id="indexChips">
-                            <button class="index-chip active" data-index="NIFTY">
-                                <i class="fas fa-chart-area"></i> NIFTY 50
-                            </button>
-                            <button class="index-chip active" data-index="BANKNIFTY">
-                                <i class="fas fa-university"></i> BANK NIFTY
-                            </button>
-                            <button class="index-chip active" data-index="DOW JONES">
-                                <i class="fas fa-flag-usa"></i> DOW JONES
-                            </button>
-                            <button class="index-chip active" data-index="NASDAQ">
-                                <i class="fas fa-microchip"></i> NASDAQ
-                            </button>
+                <!-- Filters -->
+                <div class="filters-bar">
+                    <div class="search-input-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" placeholder="Search signals..." autocomplete="off">
+                    </div>
+                    <div class="filter-chips" id="signalFilterChips">
+                        <button class="chip active" data-filter="all">All</button>
+                        <button class="chip" data-filter="LONG">
+                            <span class="chip-dot green"></span> Long
+                        </button>
+                        <button class="chip" data-filter="SHORT">
+                            <span class="chip-dot red"></span> Short
+                        </button>
+                    </div>
+                    <select class="filter-dropdown" id="tfFilter">
+                        <option value="all">All Timeframes</option>
+                    </select>
+                </div>
+
+                <!-- Table -->
+                <div class="table-wrap">
+                    <table id="signalsTable">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-col="name">
+                                    <span>Index</span>
+                                    <i class="fas fa-sort sort-icon"></i>
+                                </th>
+                                <th class="sortable" data-col="timeframe">
+                                    <span>Timeframe</span>
+                                    <i class="fas fa-sort sort-icon"></i>
+                                </th>
+                                <th class="sortable" data-col="signal">
+                                    <span>Signal</span>
+                                    <i class="fas fa-sort sort-icon"></i>
+                                </th>
+                                <th class="sortable" data-col="angle">
+                                    <span>Angle</span>
+                                    <i class="fas fa-sort sort-icon"></i>
+                                </th>
+                                <th class="sortable" data-col="change">
+                                    <span>Daily Chg</span>
+                                    <i class="fas fa-sort sort-icon"></i>
+                                </th>
+                                <th>Timestamp</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="signalsBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                    <div class="empty-state" id="emptyState">
+                        <i class="fas fa-satellite-dish"></i>
+                        <p>No signals detected yet</p>
+                        <span>Run a scan to detect market signals</span>
+                    </div>
+                </div>
+                <div class="table-footer">
+                    <span id="resultCount">0 results</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ──── SCANNER TAB ──── -->
+        <section class="tab-content" id="tab-scanner">
+            <header class="page-header">
+                <div>
+                    <h1 class="page-title">Signal Scanner</h1>
+                    <p class="page-subtitle">Configure and run market analysis</p>
+                </div>
+            </header>
+
+            <div class="scanner-layout">
+                <div class="card scanner-config-card">
+                    <h2><i class="fas fa-sliders-h"></i> Scan Configuration</h2>
+
+                    <div class="config-grid">
+                        <div class="config-section">
+                            <label class="config-label">Market Indices</label>
+                            <div class="index-chips" id="indexChips">
+                                <button class="index-chip active" data-index="NIFTY">
+                                    <i class="fas fa-chart-area"></i> NIFTY 50
+                                </button>
+                                <button class="index-chip active" data-index="BANKNIFTY">
+                                    <i class="fas fa-university"></i> BANK NIFTY
+                                </button>
+                                <button class="index-chip active" data-index="DOW JONES">
+                                    <i class="fas fa-flag-usa"></i> DOW JONES
+                                </button>
+                                <button class="index-chip active" data-index="NASDAQ">
+                                    <i class="fas fa-microchip"></i> NASDAQ
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="config-section">
+                            <label class="config-label">Timeframes</label>
+                            <div class="tf-chips" id="tfChips">
+                                <button class="tf-chip active" data-tf="15min">15m</button>
+                                <button class="tf-chip active" data-tf="30min">30m</button>
+                                <button class="tf-chip" data-tf="45min">45m</button>
+                                <button class="tf-chip active" data-tf="1hr">1h</button>
+                                <button class="tf-chip" data-tf="2hr">2h</button>
+                                <button class="tf-chip active" data-tf="4hr">4h</button>
+                                <button class="tf-chip" data-tf="1 day">1D</button>
+                                <button class="tf-chip" data-tf="1 week">1W</button>
+                            </div>
+                        </div>
+
+                        <div class="config-section full-width">
+                            <label class="config-label">Strategy Parameters</label>
+                            <div class="params-row">
+                                <div class="param-group">
+                                    <label for="adaptationSpeed">Adaptation Speed</label>
+                                    <select id="adaptationSpeed" class="filter-dropdown">
+                                        <option value="Low">Low</option>
+                                        <option value="Medium" selected>Medium</option>
+                                        <option value="High">High</option>
+                                    </select>
+                                </div>
+                                <div class="param-group">
+                                    <label for="minBarsBetween">Min Bars Between Signals</label>
+                                    <input type="number" id="minBarsBetween" class="filter-dropdown" value="3" min="1"
+                                        max="20">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="config-section">
-                        <label class="config-label">Timeframes</label>
-                        <div class="tf-chips" id="tfChips">
-                            <button class="tf-chip active" data-tf="15min">15m</button>
-                            <button class="tf-chip active" data-tf="30min">30m</button>
-                            <button class="tf-chip" data-tf="45min">45m</button>
-                            <button class="tf-chip active" data-tf="1hr">1h</button>
-                            <button class="tf-chip" data-tf="2hr">2h</button>
-                            <button class="tf-chip active" data-tf="4hr">4h</button>
-                            <button class="tf-chip" data-tf="1 day">1D</button>
-                            <button class="tf-chip" data-tf="1 week">1W</button>
+                    <div class="scan-actions">
+                        <button class="btn btn-primary btn-lg pulse-glow" id="runScanBtn">
+                            <i class="fas fa-play"></i>
+                            <span>Run Scanner</span>
+                        </button>
+                    </div>
+
+                    <!-- Scan Progress -->
+                    <div class="scan-progress-wrap hidden" id="scanProgressWrap">
+                        <div class="progress-header">
+                            <span class="progress-label">Scanning...</span>
+                            <span class="progress-pct" id="scanProgressPct">0%</span>
                         </div>
+                        <div class="progress-bar-track">
+                            <div class="progress-bar-fill" id="scanProgressBar"></div>
+                            <div class="progress-bar-glow"></div>
+                        </div>
+                        <p class="progress-detail" id="scanProgressDetail">Initializing scanner...</p>
                     </div>
                 </div>
+            </div>
+        </section>
 
-                <div class="scan-actions">
-                    <button class="btn btn-primary btn-lg pulse-glow" id="runScanBtn">
-                        <i class="fas fa-play"></i>
-                        <span>Run Scanner</span>
+        <!-- ──── DIAGNOSTICS TAB ──── -->
+        <section class="tab-content" id="tab-diagnostics">
+            <header class="page-header">
+                <div>
+                    <h1 class="page-title">Live Diagnostics</h1>
+                    <p class="page-subtitle">Real-time scanner logs and system status</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-sm btn-ghost" id="clearLogsBtn">
+                        <i class="fas fa-trash-alt"></i> Clear
                     </button>
                 </div>
+            </header>
 
-                <!-- Scan Progress -->
-                <div class="scan-progress-wrap hidden" id="scanProgressWrap">
-                    <div class="progress-header">
-                        <span class="progress-label">Scanning...</span>
-                        <span class="progress-pct" id="scanProgressPct">0%</span>
+            <div class="card terminal-card">
+                <div class="terminal-header">
+                    <div class="terminal-dots">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
                     </div>
-                    <div class="progress-bar-track">
-                        <div class="progress-bar-fill" id="scanProgressBar"></div>
-                        <div class="progress-bar-glow"></div>
+                    <span class="terminal-title">gemini-scanner — logs</span>
+                </div>
+                <div class="terminal-body" id="logOutput">
+                    <div class="log-line system">
+                        <span class="log-ts">system</span>
+                        <span class="log-msg">Waiting for scanner output...</span>
                     </div>
-                    <p class="progress-detail" id="scanProgressDetail">Initializing scanner...</p>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- ──── DIAGNOSTICS TAB ──── -->
-    <section class="tab-content" id="tab-diagnostics">
-        <header class="page-header">
-            <div>
-                <h1 class="page-title">Live Diagnostics</h1>
-                <p class="page-subtitle">Real-time scanner logs and system status</p>
-            </div>
-            <div class="header-actions">
-                <button class="btn btn-sm btn-ghost" id="clearLogsBtn">
-                    <i class="fas fa-trash-alt"></i> Clear
-                </button>
-            </div>
-        </header>
+    </main>
 
-        <div class="card terminal-card">
-            <div class="terminal-header">
-                <div class="terminal-dots">
-                    <span class="dot red"></span>
-                    <span class="dot yellow"></span>
-                    <span class="dot green"></span>
-                </div>
-                <span class="terminal-title">gemini-scanner — logs</span>
-            </div>
-            <div class="terminal-body" id="logOutput">
-                <div class="log-line system">
-                    <span class="log-ts">system</span>
-                    <span class="log-msg">Waiting for scanner output...</span>
-                </div>
-            </div>
-        </div>
-    </section>
-
-</main>
-
-<!-- ════════════════════════════════════════════════════════════════════
+    <!-- ════════════════════════════════════════════════════════════════════
      TRADINGVIEW CHART MODAL
      ════════════════════════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="chartModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 id="chartModalTitle">Chart</h3>
-            <button class="modal-close" id="chartModalClose">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <div id="tradingviewWidget" class="tv-widget-container"></div>
+    <div class="modal-overlay" id="chartModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="chartModalTitle">Chart</h3>
+                <button class="modal-close" id="chartModalClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="tradingviewWidget" class="tv-widget-container"></div>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- ════════════════════════════════════════════════════════════════════
+    <!-- ════════════════════════════════════════════════════════════════════
      TOAST NOTIFICATIONS
      ════════════════════════════════════════════════════════════════════ -->
-<div id="toastContainer"></div>
+    <div id="toastContainer"></div>
 
-<script src="app.js"></script>
+    <script src="app.js"></script>
 </body>
+
 </html>

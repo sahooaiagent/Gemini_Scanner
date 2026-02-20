@@ -158,7 +158,7 @@ def fetch_yfinance_data(ticker, tf_input, retries=3):
 # AMA PRO TEMA LOGIC — Faithful Port of Pine Script
 # =============================================================================
 
-def apply_ama_pro_tema(df):
+def apply_ama_pro_tema(df, **kwargs):
     """
     Applies the full AMA PRO TEMA logic:
     1. Market regime detection (ADX, volatility ratio, EMA alignment)
@@ -179,8 +179,13 @@ def apply_ama_pro_tema(df):
         i_adxLength = 14
         i_adxThreshold = 25
         i_volLookback = 50
-        i_minBarsBetween = 3
-        sensitivity_mult = 1.0  # "Medium"
+        
+        # User defined parameters
+        i_minBarsBetween = kwargs.get('min_bars_between', 3)
+        adaptation_speed = kwargs.get('adaptation_speed', 'Medium')
+        
+        # Sensitivity multiplier: High=1.5, Medium=1.0, Low=0.5 (as per Pine Script)
+        sensitivity_mult = 1.5 if adaptation_speed == 'High' else 0.5 if adaptation_speed == 'Low' else 1.0
 
         # =================================================================
         # SECTION 3: MARKET REGIME DETECTION
@@ -390,15 +395,27 @@ def apply_ama_pro_tema(df):
 # MAIN SCAN ENTRY POINT
 # =============================================================================
 
-def run_scan(indices, timeframes, log_file):
+def run_scan(indices, timeframes, log_file, **kwargs):
     """
     Main entrypoint called by the API.
     Scans selected indices across selected timeframes using AMA PRO TEMA logic.
     """
     results = []
     
+    # Map friendly names to yfinance tickers
+    index_map = {
+        'NIFTY': '^NSEI',
+        'BANKNIFTY': '^NSEBANK',
+        'DOW JONES': '^DJI',
+        'NASDAQ': '^IXIC'
+    }
+
+    # Parameters to pass down
+    adaptation_speed = kwargs.get('adaptation_speed', 'Medium')
+    min_bars_between = kwargs.get('min_bars_between', 3)
+
     for index_name in indices:
-        ticker = TICKER_MAP.get(index_name)
+        ticker = index_map.get(index_name)
         if not ticker:
             logging.warning(f"Unknown index '{index_name}', skipping.")
             continue

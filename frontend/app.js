@@ -71,10 +71,10 @@ function initClock() {
 // TICKER TAPE
 // ══════════════════════════════════════════════════════════════
 const INDICES = [
-    { name: 'NIFTY 50',   ticker: '^NSEI',     price: '—', change: '—' },
-    { name: 'BANK NIFTY', ticker: '^NSEBANK',   price: '—', change: '—' },
-    { name: 'DOW JONES',  ticker: '^DJI',       price: '—', change: '—' },
-    { name: 'NASDAQ',     ticker: '^IXIC',      price: '—', change: '—' },
+    { name: 'NIFTY 50', ticker: '^NSEI', price: '—', change: '—' },
+    { name: 'BANK NIFTY', ticker: '^NSEBANK', price: '—', change: '—' },
+    { name: 'DOW JONES', ticker: '^DJI', price: '—', change: '—' },
+    { name: 'NASDAQ', ticker: '^IXIC', price: '—', change: '—' },
 ];
 
 function initTickerTape() {
@@ -320,6 +320,8 @@ async function runScan() {
 
     const indices = Array.from($$('.index-chip.active')).map(c => c.dataset.index);
     const timeframes = Array.from($$('.tf-chip.active')).map(c => c.dataset.tf);
+    const adaptation_speed = $('#adaptationSpeed').value;
+    const min_bars_between = parseInt($('#minBarsBetween').value) || 3;
 
     if (indices.length === 0) {
         showToast('Select at least one index', 'warning');
@@ -347,7 +349,7 @@ async function runScan() {
     updateStats();
 
     // Add scan start log
-    addLogLine('info', `🔄 SCAN IN PROGRESS — Indices: ${indices.join(', ')} | TFs: ${timeframes.join(', ')}`);
+    addLogLine('info', `🔄 SCAN IN PROGRESS — Indices: ${indices.join(', ')} | TFs: ${timeframes.join(', ')} | Speed: ${adaptation_speed} | MinBars: ${min_bars_between}`);
 
     // Start log polling
     startLogPolling();
@@ -365,7 +367,12 @@ async function runScan() {
         const res = await fetch(`${API_URL}/api/scan`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ indices, timeframes })
+            body: JSON.stringify({
+                indices,
+                timeframes,
+                adaptation_speed,
+                min_bars_between
+            })
         });
 
         clearInterval(progInterval);
@@ -374,7 +381,7 @@ async function runScan() {
 
         const data = await res.json();
         allResults = data.data || [];
-        
+
         updateProgress(100, 'Scan complete!');
         addLogLine('success', `✅ SCAN COMPLETED — ${allResults.length} signal(s) found`);
 

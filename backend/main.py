@@ -49,6 +49,8 @@ latest_scan = {
 class ScanRequest(BaseModel):
     indices: List[str]
     timeframes: List[str]
+    adaptation_speed: Optional[str] = "Medium"
+    min_bars_between: Optional[int] = 3
 
 # ── API ROUTES ──
 
@@ -62,7 +64,7 @@ def serve_frontend():
 
 @app.post("/api/scan")
 def trigger_scan(request: ScanRequest):
-    logging.info(f"Received scan request for indices: {request.indices} and timeframes: {request.timeframes}")
+    logging.info(f"Received scan request for indices: {request.indices} and timeframes: {request.timeframes} | Speed: {request.adaptation_speed} | MinBars: {request.min_bars_between}")
     try:
         # Clear log file before new scan
         open(log_file, 'w').close()
@@ -71,7 +73,13 @@ def trigger_scan(request: ScanRequest):
         start_time = time.time()
         
         # Run scanner
-        results = scanner.run_scan(request.indices, request.timeframes, log_file)
+        results = scanner.run_scan(
+            request.indices, 
+            request.timeframes, 
+            log_file,
+            adaptation_speed=request.adaptation_speed,
+            min_bars_between=request.min_bars_between
+        )
         
         duration = round(time.time() - start_time, 2)
         scan_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
