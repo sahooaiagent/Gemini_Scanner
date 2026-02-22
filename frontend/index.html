@@ -214,8 +214,16 @@
                                     <span>Angle</span>
                                     <i class="fas fa-sort sort-icon"></i>
                                 </th>
+                                <th class="sortable" data-col="temagap">
+                                    <span>TEMA Gap</span>
+                                    <i class="fas fa-sort sort-icon"></i>
+                                </th>
                                 <th class="sortable" data-col="change">
                                     <span>Daily Chg</span>
+                                    <i class="fas fa-sort sort-icon"></i>
+                                </th>
+                                <th class="sortable" data-col="scanner">
+                                    <span>Scanner</span>
                                     <i class="fas fa-sort sort-icon"></i>
                                 </th>
                                 <th>Timestamp</th>
@@ -273,13 +281,18 @@
                         <div class="config-section">
                             <label class="config-label">Timeframes</label>
                             <div class="tf-chips" id="tfChips">
+                                <button class="tf-chip" data-tf="5min">5m</button>
+                                <button class="tf-chip" data-tf="10min">10m</button>
                                 <button class="tf-chip active" data-tf="15min">15m</button>
                                 <button class="tf-chip active" data-tf="30min">30m</button>
                                 <button class="tf-chip" data-tf="45min">45m</button>
                                 <button class="tf-chip active" data-tf="1hr">1h</button>
                                 <button class="tf-chip" data-tf="2hr">2h</button>
                                 <button class="tf-chip active" data-tf="4hr">4h</button>
+                                <button class="tf-chip" data-tf="8hr">8h</button>
+                                <button class="tf-chip" data-tf="12hr">12h</button>
                                 <button class="tf-chip" data-tf="1 day">1D</button>
+                                <button class="tf-chip" data-tf="2 day">2D</button>
                                 <button class="tf-chip" data-tf="1 week">1W</button>
                             </div>
                         </div>
@@ -287,6 +300,14 @@
                         <div class="config-section full-width">
                             <label class="config-label">Strategy Parameters</label>
                             <div class="params-row">
+                                <div class="param-group">
+                                    <label for="scannerType">Scanner Type</label>
+                                    <select id="scannerType" class="filter-dropdown">
+                                        <option value="ama_pro" selected>AMA Pro</option>
+                                        <option value="qwen">Qwen</option>
+                                        <option value="both">Both</option>
+                                    </select>
+                                </div>
                                 <div class="param-group">
                                     <label for="adaptationSpeed">Adaptation Speed</label>
                                     <select id="adaptationSpeed" class="filter-dropdown">

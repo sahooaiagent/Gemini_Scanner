@@ -7,6 +7,11 @@ let allResults = [];
 let scanRunning = false;
 let logPollInterval = null;
 let currentSort = { col: null, asc: true };
+const TF_DISPLAY_MAP = {
+    '5min': '5m', '10min': '10m', '15min': '15m', '30min': '30m', '45min': '45m',
+    '1hr': '1h', '2hr': '2h', '4hr': '4h', '8hr': '8h', '12hr': '12h',
+    '1 day': '1D', '2 day': '2D', '1 week': '1W'
+};
 
 // ── DOM REFS ──
 const $ = (sel) => document.querySelector(sel);
@@ -157,6 +162,7 @@ async function fetchResults() {
         if (data.scan_time) {
             updateLastScanTime(data.scan_time);
         }
+        populateTfFilter();
         renderResults();
         updateStats();
     } catch (e) {
@@ -209,8 +215,11 @@ function renderResults() {
         const changeVal = parseFloat(changeStr);
         const changeCls = isNaN(changeVal) ? '' : (changeVal >= 0 ? 'change-positive' : 'change-negative');
         const name = r['Crypto Name'] || '—';
-        const tfMap = { '15min': '15m', '30min': '30m', '45min': '45m', '1hr': '1h', '2hr': '2h', '4hr': '4h', '1 day': '1D', '1 week': '1W' };
-        const tfDisplay = tfMap[r.Timeperiod] || r.Timeperiod;
+        const tfDisplay = TF_DISPLAY_MAP[r.Timeperiod?.trim()] || r.Timeperiod;
+
+        const temaGap = r['TEMA Gap'] || '—';
+        const scannerName = r['Scanner'] || '—';
+        const scannerCls = scannerName === 'Both' ? 'scanner-both' : scannerName === 'Qwen' ? 'scanner-qwen' : 'scanner-ama';
 
         return `
             <tr style="animation: fadeUp 0.3s ${0.03 * i}s var(--ease-out) both">
@@ -223,7 +232,9 @@ function renderResults() {
                     </span>
                 </td>
                 <td class="mono">${r.Angle || '—'}</td>
+                <td class="mono">${temaGap}</td>
                 <td class="${changeCls}">${changeStr}</td>
+                <td><span class="scanner-tag ${scannerCls}">${scannerName}</span></td>
                 <td class="mono">${r.Timestamp || '—'}</td>
                 <td>
                     <button class="chart-btn" onclick="openChart('${name}', '${r.Timeperiod}')">
@@ -322,6 +333,7 @@ async function runScan() {
     const timeframes = Array.from($$('.tf-chip.active')).map(c => c.dataset.tf);
     const adaptation_speed = $('#adaptationSpeed').value;
     const min_bars_between = parseInt($('#minBarsBetween').value) || 3;
+    const scanner_type = $('#scannerType').value;
 
     if (indices.length === 0) {
         showToast('Select at least one index', 'warning');
@@ -349,7 +361,7 @@ async function runScan() {
     updateStats();
 
     // Add scan start log
-    addLogLine('info', `🔄 SCAN IN PROGRESS — Indices: ${indices.join(', ')} | TFs: ${timeframes.join(', ')} | Speed: ${adaptation_speed} | MinBars: ${min_bars_between}`);
+    addLogLine('info', `🔄 SCAN IN PROGRESS — Indices: ${indices.join(', ')} | TFs: ${timeframes.join(', ')} | Speed: ${adaptation_speed} | MinBars: ${min_bars_between} | Scanner: ${scanner_type}`);
 
     // Start log polling
     startLogPolling();
@@ -371,7 +383,8 @@ async function runScan() {
                 indices,
                 timeframes,
                 adaptation_speed,
-                min_bars_between
+                min_bars_between,
+                scanner_type
             })
         });
 
@@ -385,6 +398,7 @@ async function runScan() {
         updateProgress(100, 'Scan complete!');
         addLogLine('success', `✅ SCAN COMPLETED — ${allResults.length} signal(s) found`);
 
+        populateTfFilter();
         renderResults();
         updateStats();
         updateLastScanTime(new Date().toISOString());
@@ -473,6 +487,34 @@ function addLogLine(cls, msg) {
     logEl.scrollTop = logEl.scrollHeight;
 }
 
+function populateTfFilter() {
+    const filter = $('#tfFilter');
+    if (!filter) return;
+    const currentVal = filter.value;
+
+    // Get all timeframes that were either searched or have results
+    const searchedTfs = Array.from($$('.tf-chip.active')).map(c => c.dataset.tf);
+    const resultTfs = allResults.map(r => r.Timeperiod);
+    const timeframes = [...new Set([...searchedTfs, ...resultTfs])].sort();
+
+    console.log('Populating TF filter with:', timeframes);
+
+    let html = '<option value="all">All Timeframes</option>';
+    timeframes.forEach(tf => {
+        if (!tf) return;
+        const mapped = TF_DISPLAY_MAP[tf.trim()] || tf;
+        html += `<option value="${tf}">${mapped}</option>`;
+    });
+
+    filter.innerHTML = html;
+    // Restore previous value if it still exists, otherwise 'all'
+    if (html.includes(`value="${currentVal}"`)) {
+        filter.value = currentVal;
+    } else {
+        filter.value = 'all';
+    }
+}
+
 // ══════════════════════════════════════════════════════════════
 // FILTER CONTROLS
 // ══════════════════════════════════════════════════════════════
@@ -504,7 +546,9 @@ function initFilterControls() {
                 timeframe: 'Timeperiod',
                 signal: 'Signal',
                 angle: 'Angle',
-                change: 'Daily Change'
+                temagap: 'TEMA Gap',
+                change: 'Daily Change',
+                scanner: 'Scanner'
             };
             const col = colMap[th.dataset.col];
             if (currentSort.col === col) {
@@ -547,9 +591,9 @@ function openChart(indexName, timeframe) {
     };
 
     const tvTimeframes = {
-        '15min': '15', '30min': '30', '45min': '45',
-        '1hr': '60', '2hr': '120', '4hr': '240',
-        '1 day': 'D', '1 week': 'W'
+        '5min': '5', '10min': '10', '15min': '15', '30min': '30', '45min': '45',
+        '1hr': '60', '2hr': '120', '4hr': '240', '8hr': '480', '12hr': '720',
+        '1 day': 'D', '2 day': '2D', '1 week': 'W'
     };
 
     const symbol = tvSymbols[indexName] || `NASDAQ:${indexName}`;
@@ -596,9 +640,9 @@ function exportCSV() {
         showToast('No data to export', 'warning');
         return;
     }
-    const headers = ['Index', 'Timeframe', 'Signal', 'Angle', 'Daily Change', 'Timestamp'];
+    const headers = ['Index', 'Timeframe', 'Signal', 'Angle', 'TEMA Gap', 'Daily Change', 'Scanner', 'Timestamp'];
     const rows = allResults.map(r => [
-        r['Crypto Name'], r.Timeperiod, r.Signal, r.Angle, r['Daily Change'], r.Timestamp
+        r['Crypto Name'], r.Timeperiod, r.Signal, r.Angle, r['TEMA Gap'] || '', r['Daily Change'], r['Scanner'] || '', r.Timestamp
     ]);
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });

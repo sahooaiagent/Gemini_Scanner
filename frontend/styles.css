@@ -1069,6 +1069,30 @@ tbody tr:hover {
     border-radius: 4px;
 }
 
+.scanner-tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 4px;
+}
+
+.scanner-tag.scanner-ama {
+    color: var(--cyan);
+    background: var(--cyan-dim);
+}
+
+.scanner-tag.scanner-qwen {
+    color: #f0a500;
+    background: rgba(240, 165, 0, 0.1);
+}
+
+.scanner-tag.scanner-both {
+    color: #a855f7;
+    background: rgba(168, 85, 247, 0.1);
+}
+
 .change-positive {
     color: var(--green);
     font-weight: 600;
